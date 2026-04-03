@@ -1,0 +1,61 @@
+# Скомпилированные файлы
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.pyd
+*.pdb
+
+# Go
+go.sum
+*.test
+*.out
+vendor/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+*.egg-info/
+*.egg
+dist/
+build/
+*.whl
+
+# Rust (на всякий случай)
+target/
+Cargo.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Логи
+*.log
+
+# Временные файлы
+*.tmp
+*.temp
+
+# Сгенерированная документация
+docs/_build/
+site/
+
+# Файлы с секретами
+*.secret
+*.key
+*.pem
