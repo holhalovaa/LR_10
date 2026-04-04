@@ -1,103 +1,79 @@
 package main
 
 import (
-	"net/http"
-	"net/http/httptest"
-	"strings"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/gorilla/websocket"
 )
 
-func TestWebSocketUpgrade(t *testing.T) {
-	// Создаём тестовый сервер
-	server := httptest.NewServer(http.HandlerFunc(handleConnections))
-	defer server.Close()
+func TestWebSocketConnection(t *testing.T) {
+	port := 8084
+	srv := RunServer(port)
+	defer srv.Close()
 
-	// Преобразуем http:// в ws://
-	wsURL := "ws" + strings.TrimPrefix(server.URL, "http")
+	time.Sleep(1 * time.Second)
 
-	// Подключаемся к WebSocket
-	ws, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	ws, _, err := websocket.DefaultDialer.Dial(fmt.Sprintf("ws://localhost:%d/ws", port), nil)
 	if err != nil {
-		t.Fatalf("Не удалось подключиться к WebSocket: %v", err)
+		t.Fatalf("Не удалось подключиться: %v", err)
 	}
 	defer ws.Close()
 
-	// Проверяем, что соединение установлено
 	if ws == nil {
-		t.Error("WebSocket соединение не установлено")
+		t.Error("Соединение не установлено")
 	}
 }
 
-func TestBroadcastMessage(t *testing.T) {
-	// Создаём тестовый сервер
-	server := httptest.NewServer(http.HandlerFunc(handleConnections))
-	defer server.Close()
+func TestSendAndReceiveMessage(t *testing.T) {
+	port := 8085
+	srv := RunServer(port)
+	defer srv.Close()
 
-	wsURL := "ws" + strings.TrimPrefix(server.URL, "http")
+	time.Sleep(1 * time.Second)
 
-	// Подключаем первого клиента
-	ws1, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	ws1, _, err := websocket.DefaultDialer.Dial(fmt.Sprintf("ws://localhost:%d/ws", port), nil)
 	if err != nil {
 		t.Fatalf("Первый клиент не подключился: %v", err)
 	}
 	defer ws1.Close()
 
-	// Подключаем второго клиента
-	ws2, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	ws2, _, err := websocket.DefaultDialer.Dial(fmt.Sprintf("ws://localhost:%d/ws", port), nil)
 	if err != nil {
 		t.Fatalf("Второй клиент не подключился: %v", err)
 	}
 	defer ws2.Close()
 
-	// Отправляем сообщение от первого клиента
-	testMsg := "Hello from test"
+	time.Sleep(500 * time.Millisecond)
+
+	testMsg := "Hello, chat!"
 	err = ws1.WriteMessage(websocket.TextMessage, []byte(testMsg))
 	if err != nil {
-		t.Fatalf("Ошибка отправки сообщения: %v", err)
+		t.Fatalf("Ошибка отправки: %v", err)
 	}
 
-	// Ждём и читаем сообщение у второго клиента
-	done := make(chan bool)
-	go func() {
-		_, msg, err := ws2.ReadMessage()
-		if err != nil {
-			t.Errorf("Ошибка чтения сообщения: %v", err)
-			done <- false
-			return
-		}
-		if string(msg) != testMsg {
-			t.Errorf("Получено неправильное сообщение: получили %s, ожидали %s", msg, testMsg)
-			done <- false
-			return
-		}
-		done <- true
-	}()
+	_, msgBytes, err := ws2.ReadMessage()
+	if err != nil {
+		t.Fatalf("Ошибка чтения: %v", err)
+	}
 
-	// Таймаут на ожидание
-	select {
-	case result := <-done:
-		if !result {
-			t.Error("Тест не прошёл")
-		}
-	case <-time.After(5 * time.Second):
-		t.Error("Таймаут: сообщение не получено за 5 секунд")
+	receivedMsg := string(msgBytes)
+	if receivedMsg != testMsg {
+		t.Errorf("Получено: %s, ожидалось: %s", receivedMsg, testMsg)
 	}
 }
 
-func TestMultipleClients(t *testing.T) {
-	// Создаём тестовый сервер
-	server := httptest.NewServer(http.HandlerFunc(handleConnections))
-	defer server.Close()
+func TestMultipleClientsBroadcast(t *testing.T) {
+	port := 8086
+	srv := RunServer(port)
+	defer srv.Close()
 
-	wsURL := "ws" + strings.TrimPrefix(server.URL, "http")
+	time.Sleep(1 * time.Second)
 
-	// Подключаем 3 клиентов
 	clients := make([]*websocket.Conn, 3)
 	for i := 0; i < 3; i++ {
-		ws, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+		ws, _, err := websocket.DefaultDialer.Dial(fmt.Sprintf("ws://localhost:%d/ws", port), nil)
 		if err != nil {
 			t.Fatalf("Клиент %d не подключился: %v", i, err)
 		}
@@ -105,22 +81,24 @@ func TestMultipleClients(t *testing.T) {
 		clients[i] = ws
 	}
 
-	// Отправляем сообщение от первого клиента
-	testMsg := "Broadcast test"
+	time.Sleep(500 * time.Millisecond)
+
+	testMsg := "Broadcast message"
 	err := clients[0].WriteMessage(websocket.TextMessage, []byte(testMsg))
 	if err != nil {
 		t.Fatalf("Ошибка отправки: %v", err)
 	}
 
-	// Проверяем, что все остальные получили сообщение
+	time.Sleep(500 * time.Millisecond)
+
 	for i := 1; i < 3; i++ {
-		_, msg, err := clients[i].ReadMessage()
+		_, msgBytes, err := clients[i].ReadMessage()
 		if err != nil {
-			t.Errorf("Клиент %d не получил сообщение: %v", i, err)
+			t.Errorf("Клиент %d ошибка чтения: %v", i, err)
 			continue
 		}
-		if string(msg) != testMsg {
-			t.Errorf("Клиент %d получил: %s, ожидал: %s", i, msg, testMsg)
+		if string(msgBytes) != testMsg {
+			t.Errorf("Клиент %d получил: %s, ожидал: %s", i, msgBytes, testMsg)
 		}
 	}
 }
