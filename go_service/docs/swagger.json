@@ -1,0 +1,53 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "contact": {}
+    },
+    "paths": {
+        "/go/{path}": {
+            "get": {
+                "description": "Forwards requests to the Go service on port 8081",
+                "summary": "Proxy to Go service",
+                "responses": {
+                    "200": {
+                        "description": "Response from Go service",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "description": "Returns the status of the API Gateway",
+                "summary": "Health check",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/python/{path}": {
+            "get": {
+                "description": "Forwards requests to the Python FastAPI service on port 8000",
+                "summary": "Proxy to Python service",
+                "responses": {
+                    "200": {
+                        "description": "Response from Python service",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

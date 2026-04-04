@@ -1,0 +1,33 @@
+info:
+  contact: {}
+paths:
+  /go/{path}:
+    get:
+      description: Forwards requests to the Go service on port 8081
+      responses:
+        "200":
+          description: Response from Go service
+          schema:
+            type: string
+      summary: Proxy to Go service
+  /health:
+    get:
+      description: Returns the status of the API Gateway
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Health check
+  /python/{path}:
+    get:
+      description: Forwards requests to the Python FastAPI service on port 8000
+      responses:
+        "200":
+          description: Response from Python service
+          schema:
+            type: string
+      summary: Proxy to Python service
+swagger: "2.0"
