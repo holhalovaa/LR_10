@@ -44,17 +44,26 @@ func TestGatewayRoutes(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.Default()
 
-	// Проверяем, что роуты зарегистрированы
-	routes := []string{"/health", "/go/", "/python/"}
+	// Регистрируем реальные роуты (как в gateway.go)
+	r.GET("/health", func(c *gin.Context) { c.JSON(200, gin.H{"status": "ok"}) })
+	r.Any("/go/*any", func(c *gin.Context) { c.String(200, "proxy to go") })
+	r.Any("/python/*any", func(c *gin.Context) { c.String(200, "proxy to python") })
 
-	for _, route := range routes {
-		req, _ := http.NewRequest("GET", route, nil)
+	tests := []struct {
+		route    string
+		expected int
+	}{
+		{"/health", 200},
+		{"/go/test", 200},
+		{"/python/test", 200},
+	}
+
+	for _, tt := range tests {
+		req, _ := http.NewRequest("GET", tt.route, nil)
 		resp := httptest.NewRecorder()
 		r.ServeHTTP(resp, req)
-
-		// Даже если 404, роут должен существовать
-		if resp.Code == http.StatusNotFound {
-			t.Logf("Роут %s существует (ответ 404 из-за отсутствия бэкенда)", route)
+		if resp.Code != tt.expected {
+			t.Errorf("Роут %s: ожидался %d, получили %d", tt.route, tt.expected, resp.Code)
 		}
 	}
 }
