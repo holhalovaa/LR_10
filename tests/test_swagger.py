@@ -4,6 +4,7 @@ import subprocess
 import time
 import sys
 import os
+import json
 
 class TestSwaggerDocumentation(unittest.TestCase):
     @classmethod
@@ -30,25 +31,25 @@ class TestSwaggerDocumentation(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("text/html", response.headers.get("Content-Type", ""))
 
-    def test_openapi_json(self):
+    def test_openapi_json_exists(self):
         """Проверяем, что OpenAPI JSON схема доступна"""
         response = requests.get("http://localhost:8000/openapi.json")
         self.assertEqual(response.status_code, 200)
-        
         data = response.json()
-        # Проверяем, что в схеме есть информация о нашем API
+        self.assertIsInstance(data, dict)
         self.assertIn("info", data)
-        self.assertIn("title", data["info"])
         self.assertEqual(data["info"]["title"], "Python Service")
-        
-        # Проверяем, что эндпоинт /call-go описан в схеме
-        self.assertIn("/call-go", data["paths"])
+
+    def test_openapi_has_call_go_endpoint(self):
+        """Проверяем, что в документации есть эндпоинт /call-go"""
+        response = requests.get("http://localhost:8000/openapi.json")
+        data = response.json()
+        self.assertIn("/call-go", data["paths"], "Эндпоинт /call-go не найден в OpenAPI схеме")
 
     def test_swagger_title(self):
         """Проверяем, что заголовок Swagger соответствует заданию"""
         response = requests.get("http://localhost:8000/docs")
         self.assertEqual(response.status_code, 200)
-        # Заголовок должен содержать название сервиса
         self.assertIn("Python Service", response.text)
 
 if __name__ == "__main__":
